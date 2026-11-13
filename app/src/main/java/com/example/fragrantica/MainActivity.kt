@@ -20,13 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.rememberNavController
 import com.example.fragrantica.ui.components.Perfume
 import com.example.fragrantica.ui.components.PerfumeCard
 import com.example.fragrantica.ui.components.PerfumeCardVariant
 import com.fragrantica.ui.theme.FragranticaTheme
 import com.fragrantica.ui.theme.Mandarine
 import com.fragrantica.ui.theme.Texte
-import androidx.navigation.compose.rememberNavController
 import com.example.fragrantica.navigation.AppNavHost
 import com.example.fragrantica.ui.components.Header
 
@@ -51,15 +51,15 @@ fun ThemeTestScreen(modifier: Modifier = Modifier) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Fragrantica", style = MaterialTheme.typography.headlineLarge)
-        Text("Titre de section (Manrope)", style = MaterialTheme.typography.titleLarge)
+        Text("Fragrantica", style = MaterialTheme.typography.displayLarge)
+        Text("Titre de section (Manrope)", style = MaterialTheme.typography.displayLarge)
         Text(
             "Texte courant en Inter : découvrez les parfums, leurs notes et leurs avis.",
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.displayLarge,
         )
         Text(
             "Texte secondaire",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.displayLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Card(
@@ -68,7 +68,7 @@ fun ThemeTestScreen(modifier: Modifier = Modifier) {
             Text(
                 "Carte sur fond blanc",
                 modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.displayLarge,
             )
         }
         Button(
