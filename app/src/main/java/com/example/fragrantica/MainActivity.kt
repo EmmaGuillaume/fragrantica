@@ -3,10 +3,8 @@ package com.example.fragrantica
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,21 +26,23 @@ import com.example.fragrantica.ui.components.PerfumeCardVariant
 import com.fragrantica.ui.theme.FragranticaTheme
 import com.fragrantica.ui.theme.Mandarine
 import com.fragrantica.ui.theme.Texte
+import androidx.navigation.compose.rememberNavController
+import com.example.fragrantica.navigation.AppNavHost
+import com.example.fragrantica.ui.components.Header
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            FragranticaTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ThemeTestScreen(modifier = Modifier.padding(innerPadding))
+            FragranticaTheme() {
+                val navController = rememberNavController()
+                Scaffold(topBar = { Header(navController) }) { padding ->
+                    AppNavHost(navController, Modifier.padding(padding))
                 }
             }
         }
     }
 }
-
 @Composable
 fun ThemeTestScreen(modifier: Modifier = Modifier) {
     Column(
