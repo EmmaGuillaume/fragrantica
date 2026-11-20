@@ -24,3 +24,15 @@ data class PerfumeDto(
 @Serializable data class PerfumeAccordDto(val rank: Int, val accords: NameDto)
 @Serializable data class PerfumeNoteDto(val layer: String, val notes: NameDto)
 @Serializable data class PerfumePerfumerDto(val perfumers: NameDto)
+
+@Serializable
+data class PerfumeSummaryDto(
+    val id: Int,
+    val name: String,
+    val gender: String? = null,
+    @SerialName("release_year") val releaseYear: Int? = null,
+    @SerialName("rating_value") val ratingValue: Double? = null,
+    @SerialName("rating_count") val ratingCount: Int? = null,
+    val brands: BrandDto,
+    @SerialName("perfume_accords") val accords: List<PerfumeAccordDto> = emptyList()
+)

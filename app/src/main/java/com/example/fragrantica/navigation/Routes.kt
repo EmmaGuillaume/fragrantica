@@ -9,10 +9,12 @@ object Routes {
 
     const val A_PROPOS = "apropos"
     const val AJOUTER = "ajouter"
-    const val DETAIL = "detail"
-    const val DETAIL_PATTERN = "detail/{perfumeId}"
 
-    fun detail(perfumeId: Int) = "detail/$perfumeId"
+    const val DETAIL = "detail"
+
+    const val DETAIL_PATTERN = "$DETAIL/{perfumeId}"
+
+    fun detailRoute(id: Int) = "$DETAIL/$id"
 }
 
 val menuItems = listOf(

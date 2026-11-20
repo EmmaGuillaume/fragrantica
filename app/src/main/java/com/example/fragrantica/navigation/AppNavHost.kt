@@ -32,31 +32,21 @@ fun AppNavHost(
             AjoutParfumScreen(
                 onBack = { navController.popBackStack() },
                 onSaved = { perfumeId ->
-                    navController.navigate(Routes.detail(perfumeId)) {
+                    navController.navigate(Routes.detailRoute(perfumeId)) {
                         popUpTo(Routes.AJOUTER) { inclusive = true }
                     }
                 },
                 onOpenExisting = { perfumeId ->
-                    navController.navigate(Routes.detail(perfumeId))
+                    navController.navigate(Routes.detailRoute(perfumeId))
                 },
             )
         }
 
         composable(
             route = Routes.DETAIL_PATTERN,
-            arguments = listOf(navArgument("perfumeId") { type = NavType.IntType }),
-        ) { entry ->
-            val perfumeId = entry.arguments?.getInt("perfumeId") ?: return@composable
-            // A remplacer par Emma
-            ParfumDetailScreen(
-                perfumeId = perfumeId,
-                onBack = { navController.popBackStack() },
-            )
+            arguments = listOf(navArgument("perfumeId") { type = NavType.IntType })
+        ) {
+            PerfumeDetailScreen(onBack = { navController.popBackStack() })
         }
     }
-}
-
-@Composable
-fun ParfumDetailScreen(perfumeId: Int, onBack: () -> Boolean) {
-    TODO("Not yet implemented")
 }

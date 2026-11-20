@@ -1,6 +1,5 @@
 package com.example.fragrantica.ui.screens
 
-import android.util.Log
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,9 +23,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,14 +44,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.fragrantica.R
-import com.example.fragrantica.data.PerfumeDto
-import com.example.fragrantica.data.PerfumeRepository
+import com.example.fragrantica.data.PerfumeSummaryDto
 import com.example.fragrantica.navigation.Routes
-import com.example.fragrantica.ui.components.Perfume
 import com.example.fragrantica.ui.components.PerfumeCard
 import com.example.fragrantica.ui.components.PerfumeCardVariant
 import com.fragrantica.ui.theme.Blanc
@@ -68,29 +65,6 @@ import com.fragrantica.ui.theme.Sable
 import com.fragrantica.ui.theme.Secondaire
 import com.fragrantica.ui.theme.Texte
 import com.fragrantica.ui.theme.VertClair
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-
-@Composable
-fun AccueilScreen() {
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Accueil", style = MaterialTheme.typography.headlineMedium)
-    }
-}
-
-class ParfumsViewModel(private val repo: PerfumeRepository = PerfumeRepository()) : ViewModel() {
-    private val _perfumes = MutableStateFlow<List<PerfumeDto>>(emptyList())
-    val perfumes = _perfumes.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            runCatching { repo.topPerfumes(20) }
-                .onSuccess { _perfumes.value = it }
-                .onFailure { Log.e("Supabase", "Erreur chargement", it) }
-        }
-    }
-}
 
 private data class AccordItem(
     val name: String,
@@ -108,82 +82,6 @@ private data class JournalArticle(
     val title: String,
     val readTime: String,
     @param:DrawableRes val imageRes: Int,
-)
-
-private val nouveautesPerfumes = listOf(
-    Perfume(
-        brand = "Diptyque",
-        name = "Philosykos",
-        year = 1996,
-        concentration = "Eau de toilette",
-        rating = 4.18,
-        reviewCount = 8624,
-        accords = listOf("Vert", "Boisé"),
-        imageRes = R.drawable.img_philosykos,
-    ),
-    Perfume(
-        brand = "Hermès",
-        name = "Un Jardin en Méditerranée",
-        year = 2003,
-        concentration = "Eau de toilette",
-        rating = 4.12,
-        reviewCount = 5218,
-        accords = listOf("Vert", "Aquatique"),
-        imageRes = R.drawable.img_jardin_mediterranee,
-    ),
-    Perfume(
-        brand = "Hermès",
-        name = "Terre d’Hermès",
-        year = 2006,
-        concentration = "Eau de toilette",
-        rating = 4.30,
-        reviewCount = 12480,
-        accords = listOf("Boisé", "Agrumes"),
-        imageRes = R.drawable.img_terre_hermes,
-    ),
-    Perfume(
-        brand = "Le Labo",
-        name = "Santal 33",
-        year = 2011,
-        concentration = "Eau de parfum",
-        rating = 3.92,
-        reviewCount = 6410,
-        accords = listOf("Boisé", "Épicé"),
-        imageRes = R.drawable.img_santal_33,
-    ),
-)
-
-private val tendancesPerfumes = listOf(
-    Perfume(
-        brand = "Hermès",
-        name = "Terre d’Hermès",
-        year = 2006,
-        concentration = "Eau de toilette",
-        rating = 4.30,
-        reviewCount = 12480,
-        accords = listOf("Boisé", "Agrumes"),
-        imageRes = R.drawable.img_terre_hermes,
-    ),
-    Perfume(
-        brand = "Diptyque",
-        name = "Philosykos",
-        year = 1996,
-        concentration = "Eau de toilette",
-        rating = 4.18,
-        reviewCount = 8624,
-        accords = listOf("Vert", "Boisé"),
-        imageRes = R.drawable.img_philosykos,
-    ),
-    Perfume(
-        brand = "Hermès",
-        name = "Un Jardin en Méditerranée",
-        year = 2003,
-        concentration = "Eau de toilette",
-        rating = 4.12,
-        reviewCount = 5218,
-        accords = listOf("Vert", "Aquatique"),
-        imageRes = R.drawable.img_jardin_mediterranee,
-    ),
 )
 
 private val accordsList = listOf(
@@ -227,7 +125,10 @@ private val journalArticles = listOf(
 fun AccueilScreen(
     navController: NavHostController? = null,
     modifier: Modifier = Modifier,
+    vm: AccueilViewModel = viewModel(),
 ) {
+    val state by vm.state.collectAsState()
+
     val navigateTo: (String) -> Unit = { route ->
         navController?.navigate(route) { launchSingleTop = true }
     }
@@ -252,16 +153,12 @@ fun AccueilScreen(
             )
 
             NouveautesSection(
+                state = state,
                 isDesktop = isDesktop,
                 horizontalPadding = horizontalPadding,
-                onPerfumeClick = { navigateTo(Routes.DETAIL) },
+                onPerfumeClick = { id -> navigateTo(Routes.detailRoute(id)) },
                 onExploreAllClick = { navigateTo(Routes.PARFUMS) },
-            )
-
-            TendancesSection(
-                isDesktop = isDesktop,
-                horizontalPadding = horizontalPadding,
-                onPerfumeClick = { navigateTo(Routes.DETAIL) },
+                onRetry = vm::load,
             )
 
             ExplorerParAccordSection(
@@ -562,10 +459,12 @@ private fun HeroSearchBar(
 
 @Composable
 private fun NouveautesSection(
+    state: AccueilState,
     isDesktop: Boolean,
     horizontalPadding: Dp,
-    onPerfumeClick: (Perfume) -> Unit,
+    onPerfumeClick: (Int) -> Unit,
     onExploreAllClick: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -601,96 +500,67 @@ private fun NouveautesSection(
         }
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (isDesktop) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+        when (state) {
+            AccueilState.Loading -> Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                nouveautesPerfumes.forEach { perfume ->
-                    PerfumeCard(
-                        perfume = perfume,
-                        variant = PerfumeCardVariant.Vertical,
-                        onClick = { onPerfumeClick(perfume) },
-                        modifier = Modifier.weight(1f),
+                CircularProgressIndicator()
+            }
+
+            is AccueilState.Error -> Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(state.message, color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(onClick = onRetry) { Text("Réessayer") }
+            }
+
+            is AccueilState.Success ->
+                if (state.perfumes.isEmpty()) {
+                    Text(
+                        text = "Aucun parfum trouvé.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Secondaire,
+                    )
+                } else {
+                    PerfumeGrid(
+                        perfumes = state.perfumes,
+                        columns = if (isDesktop) 4 else 2,
+                        onPerfumeClick = onPerfumeClick,
                     )
                 }
-            }
-        } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(28.dp),
-            ) {
-                nouveautesPerfumes.chunked(2).forEach { rowPerfumes ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        rowPerfumes.forEach { perfume ->
-                            PerfumeCard(
-                                perfume = perfume,
-                                variant = PerfumeCardVariant.Vertical,
-                                onClick = { onPerfumeClick(perfume) },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
 
 @Composable
-private fun TendancesSection(
-    isDesktop: Boolean,
-    horizontalPadding: Dp,
-    onPerfumeClick: (Perfume) -> Unit,
+private fun PerfumeGrid(
+    perfumes: List<PerfumeSummaryDto>,
+    columns: Int,
+    onPerfumeClick: (Int) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Blanc)
-            .padding(
-                start = horizontalPadding,
-                end = horizontalPadding,
-                top = 44.dp,
-                bottom = 48.dp,
-            )
-    ) {
-        SectionEyebrow(text = "LES COUPS DE CŒUR DE LA COMMUNAUTÉ")
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = "Tendances",
-            style = MaterialTheme.typography.headlineLarge,
-            color = Profond,
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-
-        if (isDesktop) {
+    Column(verticalArrangement = Arrangement.spacedBy(28.dp)) {
+        perfumes.chunked(columns).forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(32.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top,
             ) {
-                tendancesPerfumes.forEach { perfume ->
+                rowItems.forEach { perfume ->
                     PerfumeCard(
-                        perfume = perfume,
-                        variant = PerfumeCardVariant.Horizontal,
-                        onClick = { onPerfumeClick(perfume) },
+                        perfume = perfume.toCardPerfume(),
+                        variant = PerfumeCardVariant.Vertical,
+                        onClick = { onPerfumeClick(perfume.id) },
                         modifier = Modifier.weight(1f),
                     )
                 }
-            }
-        } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                tendancesPerfumes.forEach { perfume ->
-                    PerfumeCard(
-                        perfume = perfume,
-                        variant = PerfumeCardVariant.Horizontal,
-                        onClick = { onPerfumeClick(perfume) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                // Complète la dernière ligne pour garder des cartes de même largeur
+                repeat(columns - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
