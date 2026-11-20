@@ -28,17 +28,15 @@ import com.fragrantica.ui.theme.FragranticaTheme
 import com.fragrantica.ui.theme.Mandarine
 import com.fragrantica.ui.theme.Texte
 import com.example.fragrantica.navigation.AppNavHost
+import com.example.fragrantica.navigation.AppRoot
 import com.example.fragrantica.ui.components.Header
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            FragranticaTheme() {
-                val navController = rememberNavController()
-                Scaffold(topBar = { Header(navController) }) { padding ->
-                    AppNavHost(navController, Modifier.padding(padding))
-                }
+            FragranticaTheme {
+                AppRoot()
             }
         }
     }
