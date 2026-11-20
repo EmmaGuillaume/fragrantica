@@ -21,8 +21,8 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable(Routes.ACCUEIL) { AccueilScreen(navController) }
-        composable(Routes.RECHERCHE) { RechercheScreen() }
-        composable(Routes.PARFUMS) { ParfumsScreen() }
+        composable(Routes.RECHERCHE) { RechercheScreen(navController) }
+        composable(Routes.PARFUMS) { ParfumsScreen(navController) }
         composable(Routes.MARQUES) { MarquesScreen() }
         composable(Routes.ACTUALITES) { ActualitesScreen() }
         composable(Routes.DETAIL) { AProposScreen(navController) }

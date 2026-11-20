@@ -36,3 +36,22 @@ data class PerfumeSummaryDto(
     val brands: BrandDto,
     @SerialName("perfume_accords") val accords: List<PerfumeAccordDto> = emptyList()
 )
+
+@Serializable
+data class SearchPerfumeRpcDto(
+    val id: Int,
+    val name: String,
+    @SerialName("brand_name") val brandName: String,
+    val gender: String? = null,
+    @SerialName("release_year") val releaseYear: Int? = null,
+    @SerialName("rating_value") val ratingValue: Double? = null,
+    @SerialName("rating_count") val ratingCount: Int? = null,
+    val accords: List<String> = emptyList(),
+    @SerialName("total_count") val totalCount: Long = 0L,
+)
+
+@Serializable
+data class SearchNameRpcDto(
+    val id: Int,
+    val name: String,
+)
