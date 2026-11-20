@@ -1,5 +1,7 @@
 package com.example.fragrantica.ui.components
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,9 +20,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.fragrantica.R
 import com.fragrantica.ui.theme.FragranticaTheme
+import com.fragrantica.ui.theme.Primaire
+import com.fragrantica.ui.theme.Profond
+import com.fragrantica.ui.theme.Secondaire
+import java.util.Locale
 
 data class Perfume(
     val brand: String,
@@ -31,6 +44,7 @@ data class Perfume(
     val reviewCount: Int,
     val accords: List<String>,
     val imageUrl: String? = null,
+    @param:DrawableRes val imageRes: Int? = null,
 )
 
 enum class PerfumeCardVariant { Vertical, Horizontal }
@@ -50,38 +64,67 @@ fun PerfumeCard(
 
 @Composable
 private fun PerfumeImage(perfume: Perfume, modifier: Modifier = Modifier) {
-    // À remplacer par AsyncImage (Coil) quand tu auras de vraies images
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-    )
+    if (perfume.imageRes != null) {
+        Image(
+            painter = painterResource(id = perfume.imageRes),
+            contentDescription = perfume.name,
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+    } else {
+        // Fallback quand aucune image locale n'est fournie
+        Box(
+            modifier = modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+    }
 }
 
 @Composable
-private fun PerfumeBrand(brand: String) {
+private fun PerfumeBrand(
+    brand: String,
+    color: Color = Secondaire,
+) {
     Text(
-        text = brand.uppercase(),
+        text = brand.uppercase(Locale.FRENCH),
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = color,
+        letterSpacing = 0.6.sp,
     )
 }
 
 @Composable
-private fun PerfumeName(name: String) {
+private fun PerfumeName(
+    name: String,
+    fontSize: TextUnit = 17.sp,
+    lineHeight: TextUnit = 22.sp,
+) {
     Text(
         text = name,
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.titleLarge.copy(
+            fontSize = fontSize,
+            lineHeight = lineHeight,
+            fontWeight = FontWeight.SemiBold,
+        ),
+        color = Profond,
     )
 }
 
 @Composable
-private fun PerfumeRating(rating: Double) {
+private fun PerfumeRating(
+    rating: Double,
+    fontSize: TextUnit = 15.sp,
+) {
     Text(
-        text = "★ ${"%.2f".format(rating).replace('.', ',')} / 5",
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground,
+        text = "★ ${String.format(Locale.US, "%.2f", rating).replace('.', ',')} / 5",
+        style = MaterialTheme.typography.titleMedium.copy(
+            fontSize = fontSize,
+            fontWeight = FontWeight.SemiBold,
+        ),
+        color = Profond,
     )
 }
 
@@ -93,36 +136,46 @@ private fun VerticalPerfumeCard(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         PerfumeImage(
-            perfume,
-            Modifier
+            perfume = perfume,
+            modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f),
+                .aspectRatio(167f / 209f),
         )
-        PerfumeBrand(perfume.brand)
-        PerfumeName(perfume.name)
+        PerfumeBrand(
+            brand = perfume.brand,
+            color = Secondaire,
+        )
+        PerfumeName(
+            name = perfume.name,
+            fontSize = 17.sp,
+            lineHeight = 22.sp,
+        )
 
         val meta = listOfNotNull(perfume.year?.toString(), perfume.concentration)
             .joinToString(" · ")
         if (meta.isNotEmpty()) {
             Text(
-                meta,
+                text = meta,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Secondaire,
             )
         }
 
-        PerfumeRating(perfume.rating)
+        PerfumeRating(
+            rating = perfume.rating,
+            fontSize = 15.sp,
+        )
 
         if (perfume.accords.isNotEmpty()) {
             Text(
-                perfume.accords.joinToString(" · "),
+                text = perfume.accords.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Secondaire,
             )
         }
     }
@@ -136,20 +189,35 @@ private fun HorizontalPerfumeCard(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PerfumeImage(perfume, Modifier.size(96.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            PerfumeBrand(perfume.brand)
-            PerfumeName(perfume.name)
-            PerfumeRating(perfume.rating)
+        PerfumeImage(
+            perfume = perfume,
+            modifier = Modifier.size(width = 96.dp, height = 120.dp),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            PerfumeBrand(
+                brand = perfume.brand,
+                color = Primaire,
+            )
+            PerfumeName(
+                name = perfume.name,
+                fontSize = 20.sp,
+                lineHeight = 24.sp,
+            )
+            PerfumeRating(
+                rating = perfume.rating,
+                fontSize = 16.sp,
+            )
+            val formattedReviews = String.format(Locale.US, "%,d", perfume.reviewCount)
+                .replace(',', ' ')
             Text(
-                "${"%,d".format(perfume.reviewCount).replace(',', ' ')} avis",
+                text = "$formattedReviews avis",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = Secondaire,
             )
         }
     }
@@ -164,8 +232,9 @@ fun PerfumeCardPreview() {
         year = 1996,
         concentration = "Eau de toilette",
         rating = 4.18,
-        reviewCount = 8200,
+        reviewCount = 8624,
         accords = listOf("Vert", "Boisé"),
+        imageRes = R.drawable.img_philosykos,
     )
 
     FragranticaTheme {
@@ -176,7 +245,7 @@ fun PerfumeCardPreview() {
             PerfumeCard(
                 philosykos,
                 variant = PerfumeCardVariant.Vertical,
-                modifier = Modifier.width(180.dp),
+                modifier = Modifier.width(167.dp),
             )
             PerfumeCard(philosykos, variant = PerfumeCardVariant.Horizontal)
         }

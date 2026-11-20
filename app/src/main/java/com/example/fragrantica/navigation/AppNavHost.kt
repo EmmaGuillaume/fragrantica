@@ -18,7 +18,7 @@ fun AppNavHost(
         startDestination = Routes.ACCUEIL,
         modifier = modifier
     ) {
-        composable(Routes.ACCUEIL) { ThemeTestScreen() }
+        composable(Routes.ACCUEIL) { AccueilScreen(navController) }
         composable(Routes.RECHERCHE) { RechercheScreen() }
         composable(Routes.PARFUMS) { ParfumsScreen() }
         composable(Routes.MARQUES) { MarquesScreen() }
