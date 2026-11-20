@@ -1,14 +1,16 @@
 package com.example.fragrantica.ui.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 
 @Composable
-fun ParfumsScreen() {
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Parfums", style = MaterialTheme.typography.headlineMedium)
-    }
+fun ParfumsScreen(
+    navController: NavHostController? = null,
+    modifier: Modifier = Modifier,
+) {
+    RechercheScreen(
+        navController = navController,
+        modifier = modifier,
+    )
 }

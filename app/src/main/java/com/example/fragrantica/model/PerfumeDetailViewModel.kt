@@ -1,4 +1,4 @@
-package com.example.fragrantica.ui.screens
+package com.example.fragrantica.model
 
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle

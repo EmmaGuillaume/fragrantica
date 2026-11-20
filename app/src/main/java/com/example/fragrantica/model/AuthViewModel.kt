@@ -1,4 +1,4 @@
-package com.example.fragrantica.ui.screens
+package com.example.fragrantica.model
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

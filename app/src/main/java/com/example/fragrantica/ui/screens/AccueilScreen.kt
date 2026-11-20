@@ -48,6 +48,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.fragrantica.R
 import com.example.fragrantica.data.PerfumeSummaryDto
+import com.example.fragrantica.model.AccueilState
+import com.example.fragrantica.model.AccueilViewModel
 import com.example.fragrantica.navigation.Routes
 import com.example.fragrantica.ui.components.PerfumeCard
 import com.example.fragrantica.ui.components.PerfumeCardVariant
@@ -149,7 +151,8 @@ fun AccueilScreen(
             HeroSection(
                 isDesktop = isDesktop,
                 horizontalPadding = horizontalPadding,
-                onSearchClick = { navigateTo(Routes.RECHERCHE) },
+                onSearchSubmit = { q -> navigateTo(Routes.rechercheRoute(q = q)) },
+                onTagClick = { tag -> navigateTo(Routes.rechercheRoute(note = tag)) },
             )
 
             NouveautesSection(
@@ -164,13 +167,13 @@ fun AccueilScreen(
             ExplorerParAccordSection(
                 isDesktop = isDesktop,
                 horizontalPadding = horizontalPadding,
-                onAccordClick = { navigateTo(Routes.PARFUMS) },
+                onAccordClick = { accord -> navigateTo(Routes.rechercheRoute(accord = accord.name)) },
             )
 
             MarquesALaUneSection(
                 isDesktop = isDesktop,
                 horizontalPadding = horizontalPadding,
-                onBrandClick = { navigateTo(Routes.MARQUES) },
+                onBrandClick = { brand -> navigateTo(Routes.rechercheRoute(brand = brand.name)) },
             )
 
             LeJournalSection(
@@ -215,7 +218,8 @@ private fun SectionEyebrow(
 private fun HeroSection(
     isDesktop: Boolean,
     horizontalPadding: Dp,
-    onSearchClick: () -> Unit,
+    onSearchSubmit: (String) -> Unit,
+    onTagClick: (String) -> Unit,
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
@@ -260,7 +264,7 @@ private fun HeroSection(
                         query = searchQuery,
                         onQueryChange = { searchQuery = it },
                         placeholder = "Parfum, marque, note, parfumeur...",
-                        onSearchClick = onSearchClick,
+                        onSearchClick = { onSearchSubmit(searchQuery) },
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(
@@ -279,7 +283,7 @@ private fun HeroSection(
                                     fontWeight = FontWeight.SemiBold,
                                 ),
                                 color = Primaire,
-                                modifier = Modifier.clickable(onClick = onSearchClick),
+                                modifier = Modifier.clickable { onTagClick(tag) },
                             )
                         }
                     }
@@ -328,7 +332,7 @@ private fun HeroSection(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
                 placeholder = "Parfum, marque, note...",
-                onSearchClick = onSearchClick,
+                onSearchClick = { onSearchSubmit(searchQuery) },
             )
             Spacer(modifier = Modifier.height(28.dp))
             Text(

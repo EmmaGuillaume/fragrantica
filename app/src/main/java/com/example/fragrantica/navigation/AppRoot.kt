@@ -14,7 +14,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.fragrantica.ui.components.Header
 import com.example.fragrantica.ui.screens.AuthScreen
-import com.example.fragrantica.ui.screens.AuthViewModel
+import com.example.fragrantica.model.AuthViewModel
 import io.github.jan.supabase.auth.status.SessionStatus
 
 @Composable

@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -34,7 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -161,12 +166,20 @@ private fun DesktopHeader(
     navController: NavHostController,
     onSignOut: (() -> Unit)? = null,
 ) {
+    var headerQuery by remember { mutableStateOf("") }
+
     val desktopLinks = listOf(
         "Parfums" to Routes.PARFUMS,
         "Marques" to Routes.MARQUES,
         "Actualités" to Routes.ACTUALITES,
         "À propos" to Routes.A_PROPOS,
     )
+
+    val triggerHeaderSearch = {
+        val route = Routes.rechercheRoute(q = headerQuery)
+        headerQuery = ""
+        navController.navigate(route) { launchSingleTop = true }
+    }
 
     Row(
         modifier = Modifier
@@ -217,9 +230,6 @@ private fun DesktopHeader(
                     .clip(RoundedCornerShape(50))
                     .background(Blanc)
                     .border(1.dp, Sable, RoundedCornerShape(50))
-                    .clickable {
-                        navController.navigate(RECHERCHE) { launchSingleTop = true }
-                    }
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -227,14 +237,33 @@ private fun DesktopHeader(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Rechercher",
                     tint = Secondaire,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable { triggerHeaderSearch() },
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Rechercher un parfum",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Secondaire,
-                )
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (headerQuery.isEmpty()) {
+                        Text(
+                            text = "Rechercher un parfum",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Secondaire,
+                        )
+                    }
+                    BasicTextField(
+                        value = headerQuery,
+                        onValueChange = { headerQuery = it },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(color = Texte),
+                        cursorBrush = SolidColor(Primaire),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { triggerHeaderSearch() }),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
 
             Text(

@@ -21,9 +21,41 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable(Routes.ACCUEIL) { AccueilScreen(navController) }
-        composable(Routes.RECHERCHE) { RechercheScreen() }
-        composable(Routes.PARFUMS) { ParfumsScreen() }
-        composable(Routes.MARQUES) { MarquesScreen() }
+        composable(
+            route = Routes.RECHERCHE_PATTERN,
+            arguments = listOf(
+                navArgument("q") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("brand") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("accord") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("note") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            )
+        ) { backStackEntry ->
+            RechercheScreen(
+                navController = navController,
+                initialQuery = backStackEntry.arguments?.getString("q"),
+                initialBrand = backStackEntry.arguments?.getString("brand"),
+                initialAccord = backStackEntry.arguments?.getString("accord"),
+                initialNote = backStackEntry.arguments?.getString("note"),
+            )
+        }
+        composable(Routes.PARFUMS) { ParfumsScreen(navController) }
+        composable(Routes.MARQUES) { MarquesScreen(navController) }
         composable(Routes.ACTUALITES) { ActualitesScreen() }
         composable(Routes.DETAIL) { AProposScreen(navController) }
         composable(Routes.A_PROPOS) { AProposScreen(navController) }

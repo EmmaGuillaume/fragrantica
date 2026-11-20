@@ -26,8 +26,15 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "SUPABASE_URL", "\"${localProps["SUPABASE_URL"]}\"")
-        buildConfigField("String", "SUPABASE_KEY", "\"${localProps["SUPABASE_KEY"]}\"")
+        val supabaseUrl = localProps.getProperty("SUPABASE_URL")
+            ?.takeIf { it.isNotBlank() && it != "null" }
+            ?: "https://ftkrvftiwhctdiibqaff.supabase.co"
+        val supabaseKey = localProps.getProperty("SUPABASE_KEY")
+            ?.takeIf { it.isNotBlank() && it != "null" }
+            ?: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0a3J2ZnRpd2hjdGRpaWJxYWZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5NjgzMzUsImV4cCI6MjEwOTU0NDMzNX0.ZagwIuCerQjGinvTigXjn5ZIh7zwXnzC8_lg13pgT7s"
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"$supabaseKey\"")
     }
 
     buildTypes {
