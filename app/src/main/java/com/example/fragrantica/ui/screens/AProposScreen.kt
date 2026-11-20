@@ -126,7 +126,7 @@ private val howItWorksSteps = listOf(
 private val faqEntries = listOf(
     FaqEntry(
         question = "Faut-il un compte pour explorer ?",
-        answer = "Non. Les fiches parfums et le journal sont accessibles librement. Un compte permet de créer votre collection et d’enregistrer vos favoris.",
+        answer = "Oui. Les fiches parfums et le journal ne sont pas accessibles librement. Un compte permet de créer votre collection et d’enregistrer vos favoris et consulter la bibliothèque de parfum.",
     ),
     FaqEntry(
         question = "Comment sont calculées les notes ?",
