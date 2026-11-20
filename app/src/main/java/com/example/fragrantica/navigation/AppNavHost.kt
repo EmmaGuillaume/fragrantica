@@ -27,6 +27,21 @@ fun AppNavHost(
         composable(Routes.ACTUALITES) { ActualitesScreen() }
         composable(Routes.DETAIL) { AProposScreen(navController) }
         composable(Routes.A_PROPOS) { AProposScreen(navController) }
+
+        composable(Routes.AJOUTER) {
+            AjoutParfumScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { perfumeId ->
+                    navController.navigate(Routes.detailRoute(perfumeId)) {
+                        popUpTo(Routes.AJOUTER) { inclusive = true }
+                    }
+                },
+                onOpenExisting = { perfumeId ->
+                    navController.navigate(Routes.detailRoute(perfumeId))
+                },
+            )
+        }
+
         composable(
             route = Routes.DETAIL_PATTERN,
             arguments = listOf(navArgument("perfumeId") { type = NavType.IntType })
