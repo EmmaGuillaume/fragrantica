@@ -1,4 +1,5 @@
 package com.example.fragrantica.data
+
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -26,6 +27,13 @@ data class PerfumeDto(
 @Serializable data class PerfumePerfumerDto(val perfumers: NameDto)
 
 @Serializable
+data class BrandWithCountryDto(
+    val id: Int,
+    val name: String,
+    val countries: CountryDto? = null,
+)
+
+@Serializable
 data class PerfumeSummaryDto(
     val id: Int,
     val name: String,
@@ -35,6 +43,13 @@ data class PerfumeSummaryDto(
     @SerialName("rating_count") val ratingCount: Int? = null,
     val brands: BrandDto,
     @SerialName("perfume_accords") val accords: List<PerfumeAccordDto> = emptyList()
+)
+
+@Serializable
+data class PerfumeFilterSeedDto(
+    val brands: BrandDto,
+    @SerialName("perfume_accords") val accords: List<PerfumeAccordDto> = emptyList(),
+    @SerialName("perfume_notes") val notes: List<PerfumeNoteDto> = emptyList(),
 )
 
 @Serializable

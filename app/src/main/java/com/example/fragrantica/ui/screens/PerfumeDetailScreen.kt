@@ -78,14 +78,14 @@ private fun PerfumeDetailContent(p: PerfumeDto) {
     ) {
         // Marque + nom
         Column {
-            Text(p.brands.name, style = MaterialTheme.typography.titleMedium)
-            Text(p.name, style = MaterialTheme.typography.headlineLarge)
+            Text(formatDisplayName(p.brands.name), style = MaterialTheme.typography.titleMedium)
+            Text(formatDisplayName(p.name), style = MaterialTheme.typography.headlineLarge)
         }
 
         // Infos générales : année · genre · pays
         val infos = listOfNotNull(
             p.releaseYear?.toString(),
-            p.gender,
+            formatGenderOrConcentration(p.gender),
             p.brands.countries?.name
         )
         if (infos.isNotEmpty()) {
@@ -106,7 +106,7 @@ private fun PerfumeDetailContent(p: PerfumeDto) {
         if (p.accords.isNotEmpty()) {
             Section("Accords") {
                 Text(
-                    p.accords.sortedBy { it.rank }.joinToString(" · ") { it.accords.name },
+                    p.accords.sortedBy { it.rank }.joinToString(" · ") { formatDisplayName(it.accords.name) },
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -121,7 +121,7 @@ private fun PerfumeDetailContent(p: PerfumeDto) {
                         style = MaterialTheme.typography.titleSmall
                     )
                     Text(
-                        notes.joinToString(", ") { it.notes.name },
+                        notes.joinToString(", ") { formatDisplayName(it.notes.name) },
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(Modifier.height(8.dp))
@@ -133,7 +133,7 @@ private fun PerfumeDetailContent(p: PerfumeDto) {
         if (p.perfumers.isNotEmpty()) {
             Section("Parfumeur(s)") {
                 Text(
-                    p.perfumers.joinToString(", ") { it.perfumers.name },
+                    p.perfumers.joinToString(", ") { formatDisplayName(it.perfumers.name) },
                     style = MaterialTheme.typography.bodyLarge
                 )
             }

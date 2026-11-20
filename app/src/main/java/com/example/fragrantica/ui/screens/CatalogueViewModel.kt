@@ -22,111 +22,50 @@ enum class CatalogueSortOption(val key: String, val label: String) {
     Name("name", "Nom A–Z"),
 }
 
+const val DEFAULT_YEAR_MIN = 1990
+const val DEFAULT_YEAR_MAX = 2026
+
 data class CatalogueUiState(
     val queryInput: String = "",
     val activeQuery: String = "",
     val selectedGender: String? = null, // null = Tous, "women" = Femme, "men" = Homme, "unisex" = Mixte
-    val yearMin: Int = 1990,
-    val yearMax: Int = 2026,
-    val availableBrands: List<String> = listOf("Diptyque", "Hermès", "Le Labo", "Guerlain"),
+    val yearMin: Int = DEFAULT_YEAR_MIN,
+    val yearMax: Int = DEFAULT_YEAR_MAX,
+    val yearFilterActive: Boolean = false,
+    val availableBrands: List<String> = emptyList(),
     val selectedBrands: List<String> = emptyList(),
     val brandSearchInput: String = "",
     val brandSuggestions: List<String> = emptyList(),
-    val selectedNotes: List<String> = listOf("Feuille de figuier"),
+    val availableNotes: List<String> = emptyList(),
+    val selectedNotes: List<String> = emptyList(),
     val noteSearchInput: String = "",
     val noteSuggestions: List<String> = emptyList(),
-    val availableAccords: List<String> = listOf("Vert", "Boisé", "Agrumes", "Aquatique", "Floral", "Épicé"),
+    val availableAccords: List<String> = emptyList(),
     val selectedAccords: List<String> = emptyList(),
+    val accordSearchInput: String = "",
+    val accordSuggestions: List<String> = emptyList(),
     val minRating4Plus: Boolean = false,
     val sortOption: CatalogueSortOption = CatalogueSortOption.Popularity,
     val currentPage: Int = 1,
     val pageSize: Int = 6,
-    val totalCount: Long = 6L,
-    val perfumes: List<SearchPerfumeRpcDto> = defaultMockupPerfumes,
-    val isLoading: Boolean = false,
+    val totalCount: Long = 0L,
+    val perfumes: List<SearchPerfumeRpcDto> = emptyList(),
+    val isLoading: Boolean = true,
+    val isFiltersLoading: Boolean = true,
     val error: String? = null,
 ) {
     val totalPages: Int
-        get() = maxOf(3, ((totalCount + pageSize - 1) / pageSize).toInt())
+        get() = if (totalCount <= 0L) 1 else ((totalCount + pageSize - 1) / pageSize).toInt()
 
     val hasActiveFilters: Boolean
         get() = activeQuery.isNotBlank() ||
             selectedGender != null ||
             selectedBrands.isNotEmpty() ||
+            selectedNotes.isNotEmpty() ||
             selectedAccords.isNotEmpty() ||
             minRating4Plus ||
-            yearMin != 1990 ||
-            yearMax != 2026
+            yearFilterActive
 }
-
-val defaultMockupPerfumes = listOf(
-    SearchPerfumeRpcDto(
-        id = 1,
-        name = "Philosykos",
-        brandName = "Diptyque",
-        gender = "Eau de toilette",
-        releaseYear = 1996,
-        ratingValue = 4.18,
-        ratingCount = 8624,
-        accords = listOf("Vert", "Boisé"),
-        totalCount = 6L,
-    ),
-    SearchPerfumeRpcDto(
-        id = 2,
-        name = "Un Jardin en Méditerranée",
-        brandName = "Hermès",
-        gender = "Eau de toilette",
-        releaseYear = 2003,
-        ratingValue = 4.12,
-        ratingCount = 5218,
-        accords = listOf("Vert", "Aquatique"),
-        totalCount = 6L,
-    ),
-    SearchPerfumeRpcDto(
-        id = 3,
-        name = "Terre d’Hermès",
-        brandName = "Hermès",
-        gender = "Eau de toilette",
-        releaseYear = 2006,
-        ratingValue = 4.30,
-        ratingCount = 12480,
-        accords = listOf("Boisé", "Agrumes"),
-        totalCount = 6L,
-    ),
-    SearchPerfumeRpcDto(
-        id = 4,
-        name = "Santal 33",
-        brandName = "Le Labo",
-        gender = "Eau de parfum",
-        releaseYear = 2011,
-        ratingValue = 3.92,
-        ratingCount = 6410,
-        accords = listOf("Boisé", "Épicé"),
-        totalCount = 6L,
-    ),
-    SearchPerfumeRpcDto(
-        id = 5,
-        name = "Hiris",
-        brandName = "Hermès",
-        gender = "Eau de toilette",
-        releaseYear = 1999,
-        ratingValue = 4.02,
-        ratingCount = 3420,
-        accords = listOf("Floral", "Poudré"),
-        totalCount = 6L,
-    ),
-    SearchPerfumeRpcDto(
-        id = 6,
-        name = "Mandarine Basilic",
-        brandName = "Guerlain",
-        gender = "Eau de toilette",
-        releaseYear = 2007,
-        ratingValue = 4.10,
-        ratingCount = 7150,
-        accords = listOf("Agrumes", "Aromatique"),
-        totalCount = 6L,
-    ),
-)
 
 class CatalogueViewModel(
     private val repo: PerfumeRepository = PerfumeRepository(),
@@ -136,18 +75,100 @@ class CatalogueViewModel(
     val state: StateFlow<CatalogueUiState> = _state.asStateFlow()
 
     private var searchJob: Job? = null
+    private var queryDebounceJob: Job? = null
     private var brandAutocompleteJob: Job? = null
     private var noteAutocompleteJob: Job? = null
+    private var accordAutocompleteJob: Job? = null
 
     init {
+        loadFilterOptions()
+        executeSearch()
+    }
+
+    fun loadFilterOptions() {
+        viewModelScope.launch {
+            _state.update { it.copy(isFiltersLoading = true) }
+            try {
+                val options = repo.getCatalogueFilterOptions()
+                _state.update { current ->
+                    val mergedBrands = (current.selectedBrands + options.brands)
+                        .distinctBy { it.lowercase() }
+                    val mergedAccords = (current.selectedAccords + options.accords)
+                        .distinctBy { it.lowercase() }
+                    current.copy(
+                        availableBrands = mergedBrands,
+                        availableAccords = mergedAccords,
+                        availableNotes = options.notes,
+                        isFiltersLoading = false,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("Supabase", "Erreur lors du chargement des filtres catalogue", e)
+                _state.update { it.copy(isFiltersLoading = false) }
+            }
+        }
+    }
+
+    fun applyInitialFilters(
+        query: String? = null,
+        brand: String? = null,
+        accord: String? = null,
+        note: String? = null,
+    ) {
+        val hasAny = !query.isNullOrBlank() ||
+            !brand.isNullOrBlank() ||
+            !accord.isNullOrBlank() ||
+            !note.isNullOrBlank()
+        if (!hasAny) return
+
+        queryDebounceJob?.cancel()
+        _state.update { current ->
+            val nextQuery = query?.trim().orEmpty()
+            val nextBrands = if (!brand.isNullOrBlank()) listOf(brand.trim()) else emptyList()
+            val nextAccords = if (!accord.isNullOrBlank()) listOf(accord.trim()) else emptyList()
+            val nextNotes = if (!note.isNullOrBlank()) listOf(note.trim()) else emptyList()
+
+            current.copy(
+                queryInput = nextQuery,
+                activeQuery = nextQuery,
+                selectedGender = null,
+                selectedBrands = nextBrands,
+                availableBrands = (nextBrands + current.availableBrands).distinctBy { it.lowercase() },
+                selectedAccords = nextAccords,
+                availableAccords = (nextAccords + current.availableAccords).distinctBy { it.lowercase() },
+                selectedNotes = nextNotes,
+                minRating4Plus = false,
+                yearFilterActive = false,
+                yearMin = DEFAULT_YEAR_MIN,
+                yearMax = DEFAULT_YEAR_MAX,
+                currentPage = 1,
+            )
+        }
         executeSearch()
     }
 
     fun onQueryInputChange(query: String) {
         _state.update { it.copy(queryInput = query) }
+        queryDebounceJob?.cancel()
+        queryDebounceJob = viewModelScope.launch {
+            delay(350)
+            val trimmed = query.trim()
+            if (trimmed != _state.value.activeQuery) {
+                _state.update {
+                    it.copy(
+                        activeQuery = trimmed,
+                        currentPage = 1,
+                    )
+                }
+                executeSearch()
+            }
+        }
     }
 
     fun submitSearch() {
+        queryDebounceJob?.cancel()
         _state.update {
             it.copy(
                 activeQuery = it.queryInput.trim(),
@@ -157,10 +178,23 @@ class CatalogueViewModel(
         executeSearch()
     }
 
-    fun onSelectGender(gender: String?) {
+    fun clearQuery() {
+        queryDebounceJob?.cancel()
         _state.update {
             it.copy(
-                selectedGender = gender,
+                queryInput = "",
+                activeQuery = "",
+                currentPage = 1,
+            )
+        }
+        executeSearch()
+    }
+
+    fun onSelectGender(gender: String?) {
+        _state.update { current ->
+            val nextGender = if (gender != null && current.selectedGender == gender) null else gender
+            current.copy(
+                selectedGender = nextGender,
                 currentPage = 1,
             )
         }
@@ -168,10 +202,25 @@ class CatalogueViewModel(
     }
 
     fun onYearRangeChange(minYear: Int, maxYear: Int) {
+        val coercedMin = minYear.coerceIn(1700, DEFAULT_YEAR_MAX)
+        val coercedMax = maxYear.coerceIn(coercedMin, DEFAULT_YEAR_MAX)
         _state.update {
             it.copy(
-                yearMin = minYear.coerceIn(1900, 2026),
-                yearMax = maxYear.coerceIn(1900, 2026),
+                yearMin = coercedMin,
+                yearMax = coercedMax,
+                yearFilterActive = true,
+                currentPage = 1,
+            )
+        }
+        executeSearch()
+    }
+
+    fun resetYearRange() {
+        _state.update {
+            it.copy(
+                yearMin = DEFAULT_YEAR_MIN,
+                yearMax = DEFAULT_YEAR_MAX,
+                yearFilterActive = false,
                 currentPage = 1,
             )
         }
@@ -179,17 +228,15 @@ class CatalogueViewModel(
     }
 
     fun onToggleBrand(brand: String) {
+        val cleaned = brand.trim()
+        if (cleaned.isEmpty()) return
         _state.update { current ->
-            val updated = if (current.selectedBrands.any { it.equals(brand, ignoreCase = true) }) {
-                current.selectedBrands.filterNot { it.equals(brand, ignoreCase = true) }
+            val updated = if (current.selectedBrands.any { it.equals(cleaned, ignoreCase = true) }) {
+                current.selectedBrands.filterNot { it.equals(cleaned, ignoreCase = true) }
             } else {
-                current.selectedBrands + brand
+                current.selectedBrands + cleaned
             }
-            val updatedAvailable = if (current.availableBrands.any { it.equals(brand, ignoreCase = true) }) {
-                current.availableBrands
-            } else {
-                listOf(brand) + current.availableBrands
-            }
+            val updatedAvailable = (updated + current.availableBrands).distinctBy { it.lowercase() }
             current.copy(
                 selectedBrands = updated,
                 availableBrands = updatedAvailable,
@@ -210,13 +257,9 @@ class CatalogueViewModel(
         }
         brandAutocompleteJob = viewModelScope.launch {
             delay(250)
-            val remote = runCatching { repo.searchNamesRpc("brand", input.trim()) }
+            val remote = runCatching { repo.searchNamesRpc("brand", input.trim(), limit = 8) }
                 .getOrDefault(emptyList())
-            val local = _state.value.availableBrands.filter {
-                it.contains(input.trim(), ignoreCase = true)
-            }
-            val merged = (remote + local).distinctBy { it.lowercase() }.take(6)
-            _state.update { it.copy(brandSuggestions = merged) }
+            _state.update { it.copy(brandSuggestions = remote) }
         }
     }
 
@@ -252,41 +295,63 @@ class CatalogueViewModel(
         _state.update { it.copy(noteSearchInput = input) }
         noteAutocompleteJob?.cancel()
         if (input.isBlank()) {
-            _state.update { it.copy(noteSuggestions = emptyList()) }
+            _state.update { current ->
+                current.copy(
+                    noteSuggestions = current.availableNotes
+                        .filter { n -> current.selectedNotes.none { it.equals(n, ignoreCase = true) } }
+                        .take(6)
+                )
+            }
             return
         }
         noteAutocompleteJob = viewModelScope.launch {
             delay(250)
-            val remote = runCatching { repo.searchNamesRpc("note", input.trim()) }
+            val remote = runCatching { repo.searchNamesRpc("note", input.trim(), limit = 8) }
                 .getOrDefault(emptyList())
-            val fallbackNotes = listOf(
-                "Feuille de figuier",
-                "Mandarine",
-                "Santal",
-                "Iris",
-                "Cèdre",
-                "Bergamote",
-                "Vétiver",
-                "Fleur d’oranger",
-            ).filter { it.contains(input.trim(), ignoreCase = true) }
-            val merged = (remote + fallbackNotes).distinctBy { it.lowercase() }.take(6)
-            _state.update { it.copy(noteSuggestions = merged) }
+            _state.update { current ->
+                current.copy(
+                    noteSuggestions = remote.filter { n ->
+                        current.selectedNotes.none { it.equals(n, ignoreCase = true) }
+                    }
+                )
+            }
         }
     }
 
     fun onToggleAccord(accord: String) {
+        val cleaned = accord.trim()
+        if (cleaned.isEmpty()) return
         _state.update { current ->
-            val updated = if (current.selectedAccords.any { it.equals(accord, ignoreCase = true) }) {
-                current.selectedAccords.filterNot { it.equals(accord, ignoreCase = true) }
+            val updated = if (current.selectedAccords.any { it.equals(cleaned, ignoreCase = true) }) {
+                current.selectedAccords.filterNot { it.equals(cleaned, ignoreCase = true) }
             } else {
-                current.selectedAccords + accord
+                current.selectedAccords + cleaned
             }
+            val updatedAvailable = (updated + current.availableAccords).distinctBy { it.lowercase() }
             current.copy(
                 selectedAccords = updated,
+                availableAccords = updatedAvailable,
+                accordSearchInput = "",
+                accordSuggestions = emptyList(),
                 currentPage = 1,
             )
         }
         executeSearch()
+    }
+
+    fun onAccordSearchInputChange(input: String) {
+        _state.update { it.copy(accordSearchInput = input) }
+        accordAutocompleteJob?.cancel()
+        if (input.isBlank()) {
+            _state.update { it.copy(accordSuggestions = emptyList()) }
+            return
+        }
+        accordAutocompleteJob = viewModelScope.launch {
+            delay(200)
+            val remote = runCatching { repo.searchNamesRpc("accord", input.trim(), limit = 8) }
+                .getOrDefault(emptyList())
+            _state.update { it.copy(accordSuggestions = remote) }
+        }
     }
 
     fun onToggleMinRating4Plus() {
@@ -310,18 +375,21 @@ class CatalogueViewModel(
     }
 
     fun onSelectPage(page: Int) {
-        val target = page.coerceAtLeast(1)
-        if (target == _state.value.currentPage) return
+        val s = _state.value
+        val target = page.coerceIn(1, s.totalPages)
+        if (target == s.currentPage) return
         _state.update { it.copy(currentPage = target) }
         executeSearch()
     }
 
     fun resetFilters() {
-        _state.update {
+        queryDebounceJob?.cancel()
+        _state.update { current ->
             CatalogueUiState(
-                availableBrands = it.availableBrands,
-                availableAccords = it.availableAccords,
-                selectedNotes = emptyList(),
+                availableBrands = current.availableBrands,
+                availableAccords = current.availableAccords,
+                availableNotes = current.availableNotes,
+                isFiltersLoading = current.isFiltersLoading,
             )
         }
         executeSearch()
@@ -333,21 +401,14 @@ class CatalogueViewModel(
             val s = _state.value
             _state.update { it.copy(isLoading = true, error = null) }
 
-            val activeNotesForRpc = if (s.selectedNotes == listOf("Feuille de figuier") && !s.hasActiveFilters) {
-                // Par défaut sur la maquette, "Feuille de figuier" est affiché à titre d'exemple tout en montrant les 6 parfums
-                emptyList()
-            } else {
-                s.selectedNotes
-            }
-
             val params = PerfumeSearchParams(
                 query = s.activeQuery,
                 gender = s.selectedGender,
                 brands = s.selectedBrands,
                 accords = s.selectedAccords,
-                notes = activeNotesForRpc,
-                yearMin = s.yearMin,
-                yearMax = s.yearMax,
+                notes = s.selectedNotes,
+                yearMin = if (s.yearFilterActive) s.yearMin else null,
+                yearMax = if (s.yearFilterActive) s.yearMax else null,
                 minRating = if (s.minRating4Plus) 4.0 else null,
                 sort = s.sortOption.key,
                 limit = s.pageSize,
@@ -368,47 +429,16 @@ class CatalogueViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.w("Supabase", "RPC search_perfumes indisponible, utilisation du catalogue local de secours", e)
-                val fallback = filterLocalMockupPerfumes(s)
+                Log.e("Supabase", "Erreur lors de la recherche de parfums sur Supabase", e)
                 _state.update {
                     it.copy(
-                        perfumes = fallback,
-                        totalCount = fallback.size.toLong(),
+                        perfumes = emptyList(),
+                        totalCount = 0L,
                         isLoading = false,
+                        error = "Impossible de charger les parfums depuis la base de données (${e.message ?: "erreur réseau"}).",
                     )
                 }
             }
-        }
-    }
-
-    private fun filterLocalMockupPerfumes(s: CatalogueUiState): List<SearchPerfumeRpcDto> {
-        val q = s.activeQuery.trim().lowercase()
-        val filtered = defaultMockupPerfumes.filter { p ->
-            val matchesQuery = q.isEmpty() ||
-                p.name.lowercase().contains(q) ||
-                p.brandName.lowercase().contains(q) ||
-                p.accords.any { it.lowercase().contains(q) }
-
-            val matchesBrand = s.selectedBrands.isEmpty() ||
-                s.selectedBrands.any { it.equals(p.brandName, ignoreCase = true) }
-
-            val matchesAccord = s.selectedAccords.isEmpty() ||
-                s.selectedAccords.any { sel -> p.accords.any { it.equals(sel, ignoreCase = true) } }
-
-            val matchesYear = (p.releaseYear == null) ||
-                (p.releaseYear in s.yearMin..s.yearMax)
-
-            val matchesRating = !s.minRating4Plus ||
-                ((p.ratingValue ?: 0.0) >= 4.0)
-
-            matchesQuery && matchesBrand && matchesAccord && matchesYear && matchesRating
-        }
-
-        return when (s.sortOption) {
-            CatalogueSortOption.Popularity -> filtered.sortedByDescending { it.ratingCount ?: 0 }
-            CatalogueSortOption.Rating -> filtered.sortedByDescending { it.ratingValue ?: 0.0 }
-            CatalogueSortOption.Recent -> filtered.sortedByDescending { it.releaseYear ?: 0 }
-            CatalogueSortOption.Name -> filtered.sortedBy { it.name.lowercase() }
         }
     }
 }

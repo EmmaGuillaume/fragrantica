@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,14 +68,34 @@ import com.fragrantica.ui.theme.Profond
 import com.fragrantica.ui.theme.Sable
 import com.fragrantica.ui.theme.Secondaire
 import com.fragrantica.ui.theme.Texte
+import java.util.Locale
 
 @Composable
 fun RechercheScreen(
     navController: NavHostController? = null,
     modifier: Modifier = Modifier,
+    initialQuery: String? = null,
+    initialBrand: String? = null,
+    initialAccord: String? = null,
+    initialNote: String? = null,
     vm: CatalogueViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
+
+    LaunchedEffect(initialQuery, initialBrand, initialAccord, initialNote) {
+        if (!initialQuery.isNullOrBlank() ||
+            !initialBrand.isNullOrBlank() ||
+            !initialAccord.isNullOrBlank() ||
+            !initialNote.isNullOrBlank()
+        ) {
+            vm.applyInitialFilters(
+                query = initialQuery,
+                brand = initialBrand,
+                accord = initialAccord,
+                note = initialNote,
+            )
+        }
+    }
 
     val navigateTo: (String) -> Unit = { route ->
         navController?.navigate(route) { launchSingleTop = true }
@@ -100,8 +121,13 @@ fun RechercheScreen(
                 onQueryChange = vm::onQueryInputChange,
                 onSearchSubmit = vm::submitSearch,
                 onResetFilters = vm::resetFilters,
+                onClearQuery = vm::clearQuery,
+                onClearGender = { vm.onSelectGender(null) },
+                onResetYear = vm::resetYearRange,
                 onRemoveBrand = vm::onToggleBrand,
+                onRemoveNote = vm::onRemoveNote,
                 onRemoveAccord = vm::onToggleAccord,
+                onToggleMinRating = vm::onToggleMinRating4Plus,
             )
 
             CatalogueContentSection(
@@ -130,8 +156,13 @@ private fun CatalogueTopHeaderSection(
     onQueryChange: (String) -> Unit,
     onSearchSubmit: () -> Unit,
     onResetFilters: () -> Unit,
+    onClearQuery: () -> Unit,
+    onClearGender: () -> Unit,
+    onResetYear: () -> Unit,
     onRemoveBrand: (String) -> Unit,
+    onRemoveNote: (String) -> Unit,
     onRemoveAccord: (String) -> Unit,
+    onToggleMinRating: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -190,7 +221,11 @@ private fun CatalogueTopHeaderSection(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(Ciel)
+                    .background(if (!state.hasActiveFilters) Ciel else Blanc)
+                    .then(
+                        if (!state.hasActiveFilters) Modifier
+                        else Modifier.border(1.dp, Sable, RoundedCornerShape(50))
+                    )
                     .clickable(onClick = onResetFilters)
                     .padding(horizontal = 20.dp, vertical = 10.dp),
             ) {
@@ -203,17 +238,58 @@ private fun CatalogueTopHeaderSection(
                 )
             }
 
+            if (state.activeQuery.isNotBlank()) {
+                ActiveFilterPill(
+                    label = "« ${state.activeQuery} » ×",
+                    onClick = onClearQuery,
+                )
+            }
+
+            state.selectedGender?.let { gender ->
+                val genderLabel = when (gender.lowercase()) {
+                    "women" -> "Femme"
+                    "men" -> "Homme"
+                    "unisex" -> "Mixte"
+                    else -> gender
+                }
+                ActiveFilterPill(
+                    label = "$genderLabel ×",
+                    onClick = onClearGender,
+                )
+            }
+
+            if (state.yearFilterActive) {
+                ActiveFilterPill(
+                    label = "${state.yearMin}–${state.yearMax} ×",
+                    onClick = onResetYear,
+                )
+            }
+
             state.selectedBrands.forEach { brand ->
                 ActiveFilterPill(
-                    label = "$brand ×",
+                    label = "${formatDisplayName(brand)} ×",
                     onClick = { onRemoveBrand(brand) },
+                )
+            }
+
+            state.selectedNotes.forEach { note ->
+                ActiveFilterPill(
+                    label = "${formatDisplayName(note)} ×",
+                    onClick = { onRemoveNote(note) },
                 )
             }
 
             state.selectedAccords.forEach { accord ->
                 ActiveFilterPill(
-                    label = "$accord ×",
+                    label = "${formatDisplayName(accord)} ×",
                     onClick = { onRemoveAccord(accord) },
+                )
+            }
+
+            if (state.minRating4Plus) {
+                ActiveFilterPill(
+                    label = "★ 4 et plus ×",
+                    onClick = onToggleMinRating,
                 )
             }
         }
@@ -328,10 +404,11 @@ private fun CatalogueContentSection(
     var mobileFiltersOpen by remember { mutableStateOf(false) }
     var sortMenuOpen by remember { mutableStateOf(false) }
 
+    val formattedTotal = String.format(Locale.US, "%,d", state.totalCount).replace(',', ' ')
     val countLabel = if (state.totalCount <= 1L) {
-        "${state.totalCount} parfum à découvrir"
+        "$formattedTotal parfum à découvrir"
     } else {
-        "${state.totalCount} parfums à découvrir"
+        "$formattedTotal parfums à découvrir"
     }
 
     Column(
@@ -396,25 +473,30 @@ private fun CatalogueContentSection(
                     PerfumeResultsGrid(
                         perfumes = state.perfumes,
                         isLoading = state.isLoading,
+                        error = state.error,
+                        onRetry = vm::executeSearch,
+                        onResetFilters = vm::resetFilters,
                         columns = 3,
                         horizontalSpacing = 24.dp,
                         verticalSpacing = 32.dp,
                         onPerfumeClick = onPerfumeClick,
                     )
 
-                    Spacer(modifier = Modifier.height(36.dp))
+                    if (state.totalCount > 0L) {
+                        Spacer(modifier = Modifier.height(36.dp))
 
-                    CataloguePaginationBar(
-                        currentPage = state.currentPage,
-                        totalPages = state.totalPages,
-                        onSelectPage = vm::onSelectPage,
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                    )
+                        CataloguePaginationBar(
+                            currentPage = state.currentPage,
+                            totalPages = state.totalPages,
+                            onSelectPage = vm::onSelectPage,
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        text = "Notes et nombres d’avis donnés à titre d’exemple.",
+                        text = "Données synchronisées en temps réel avec la base Supabase Fragrantica.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Secondaire,
                     )
@@ -503,25 +585,30 @@ private fun CatalogueContentSection(
             PerfumeResultsGrid(
                 perfumes = state.perfumes,
                 isLoading = state.isLoading,
+                error = state.error,
+                onRetry = vm::executeSearch,
+                onResetFilters = vm::resetFilters,
                 columns = 2,
                 horizontalSpacing = 16.dp,
                 verticalSpacing = 28.dp,
                 onPerfumeClick = onPerfumeClick,
             )
 
-            Spacer(modifier = Modifier.height(36.dp))
+            if (state.totalCount > 0L) {
+                Spacer(modifier = Modifier.height(36.dp))
 
-            CataloguePaginationBar(
-                currentPage = state.currentPage,
-                totalPages = state.totalPages,
-                onSelectPage = vm::onSelectPage,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
+                CataloguePaginationBar(
+                    currentPage = state.currentPage,
+                    totalPages = state.totalPages,
+                    onSelectPage = vm::onSelectPage,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Notes et nombres d’avis donnés à titre d’exemple.",
+                text = "Données synchronisées en temps réel avec la base Supabase Fragrantica.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Secondaire,
             )
@@ -566,8 +653,12 @@ private fun AffinerLaRechercheCard(
 ) {
     var showNoteInput by remember { mutableStateOf(false) }
     var showYearEditor by remember { mutableStateOf(false) }
-    var minYearInput by remember(state.yearMin) { mutableStateOf(state.yearMin.toString()) }
-    var maxYearInput by remember(state.yearMax) { mutableStateOf(state.yearMax.toString()) }
+    var minYearInput by remember(state.yearMin, state.yearFilterActive) {
+        mutableStateOf(state.yearMin.toString())
+    }
+    var maxYearInput by remember(state.yearMax, state.yearFilterActive) {
+        mutableStateOf(state.yearMax.toString())
+    }
 
     val genderOptions = listOf(
         null to "Tous",
@@ -607,8 +698,10 @@ private fun AffinerLaRechercheCard(
         FilterGroup(title = "Année de sortie") {
             Text(
                 text = "De ${state.yearMin} à ${state.yearMax}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Secondaire,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontWeight = if (state.yearFilterActive) FontWeight.SemiBold else FontWeight.Normal,
+                ),
+                color = if (state.yearFilterActive) Primaire else Secondaire,
                 modifier = Modifier.clickable { showYearEditor = !showYearEditor },
             )
             AnimatedVisibility(visible = showYearEditor) {
@@ -625,7 +718,7 @@ private fun AffinerLaRechercheCard(
                             minYearInput = raw.filter(Char::isDigit).take(4)
                             val minY = minYearInput.toIntOrNull()
                             val maxY = maxYearInput.toIntOrNull() ?: state.yearMax
-                            if (minY != null && minY in 1900..2026) {
+                            if (minY != null && minY in 1700..DEFAULT_YEAR_MAX) {
                                 vm.onYearRangeChange(minY, maxY)
                             }
                         },
@@ -640,7 +733,7 @@ private fun AffinerLaRechercheCard(
                             maxYearInput = raw.filter(Char::isDigit).take(4)
                             val minY = minYearInput.toIntOrNull() ?: state.yearMin
                             val maxY = maxYearInput.toIntOrNull()
-                            if (maxY != null && maxY in 1900..2026) {
+                            if (maxY != null && maxY in 1700..DEFAULT_YEAR_MAX) {
                                 vm.onYearRangeChange(minY, maxY)
                             }
                         },
@@ -652,15 +745,16 @@ private fun AffinerLaRechercheCard(
             }
         }
 
-        // 3. Marque (avec autocomplétion via fonction stockée search_names)
+        // 3. Marque (chargée depuis Supabase + autocomplétion RPC search_names)
         FilterGroup(title = "Marque") {
             SmallFilterTextField(
                 value = state.brandSearchInput,
                 onValueChange = vm::onBrandSearchInputChange,
                 placeholder = "Rechercher une marque...",
                 onDone = {
-                    if (state.brandSearchInput.isNotBlank()) {
-                        vm.onToggleBrand(state.brandSearchInput.trim())
+                    val picked = state.brandSuggestions.firstOrNull() ?: state.brandSearchInput.trim()
+                    if (picked.isNotBlank()) {
+                        vm.onToggleBrand(picked)
                     }
                 },
             )
@@ -670,23 +764,20 @@ private fun AffinerLaRechercheCard(
                     onPick = vm::onToggleBrand,
                 )
             }
-            val visibleBrands = if (state.brandSearchInput.isBlank()) {
-                state.availableBrands.take(4)
-            } else {
-                state.availableBrands.filter {
-                    it.contains(state.brandSearchInput.trim(), ignoreCase = true)
-                }
-            }
+            val visibleBrands = (state.selectedBrands + state.availableBrands)
+                .distinctBy { it.lowercase() }
+                .take(maxOf(4, state.selectedBrands.size))
+
             visibleBrands.forEach { brand ->
                 FilterCheckboxRow(
-                    label = brand,
+                    label = formatDisplayName(brand),
                     checked = state.selectedBrands.any { it.equals(brand, ignoreCase = true) },
                     onClick = { vm.onToggleBrand(brand) },
                 )
             }
         }
 
-        // 4. Notes (avec autocomplétion via fonction stockée search_names)
+        // 4. Notes (chargées depuis Supabase + autocomplétion RPC search_names)
         FilterGroup(title = "Notes") {
             Text(
                 text = "Ajouter une note +",
@@ -694,17 +785,23 @@ private fun AffinerLaRechercheCard(
                     fontWeight = FontWeight.Medium,
                 ),
                 color = Secondaire,
-                modifier = Modifier.clickable { showNoteInput = !showNoteInput },
+                modifier = Modifier.clickable {
+                    showNoteInput = !showNoteInput
+                    if (showNoteInput && state.noteSearchInput.isBlank()) {
+                        vm.onNoteSearchInputChange("")
+                    }
+                },
             )
             AnimatedVisibility(visible = showNoteInput) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SmallFilterTextField(
                         value = state.noteSearchInput,
                         onValueChange = vm::onNoteSearchInputChange,
-                        placeholder = "Ex. Feuille de figuier...",
+                        placeholder = "Ex. bergamot, sandalwood...",
                         onDone = {
-                            if (state.noteSearchInput.isNotBlank()) {
-                                vm.onAddNote(state.noteSearchInput)
+                            val picked = state.noteSuggestions.firstOrNull() ?: state.noteSearchInput.trim()
+                            if (picked.isNotBlank()) {
+                                vm.onAddNote(picked)
                                 showNoteInput = false
                             }
                         },
@@ -722,19 +819,42 @@ private fun AffinerLaRechercheCard(
             }
             state.selectedNotes.forEach { note ->
                 Text(
-                    text = note,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Secondaire,
+                    text = "${formatDisplayName(note)} ×",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = Primaire,
                     modifier = Modifier.clickable { vm.onRemoveNote(note) },
                 )
             }
         }
 
-        // 5. Accords
+        // 5. Accords (chargés depuis Supabase + autocomplétion RPC search_names)
         FilterGroup(title = "Accords") {
-            state.availableAccords.take(3).forEach { accord ->
+            SmallFilterTextField(
+                value = state.accordSearchInput,
+                onValueChange = vm::onAccordSearchInputChange,
+                placeholder = "Rechercher un accord...",
+                onDone = {
+                    val picked = state.accordSuggestions.firstOrNull() ?: state.accordSearchInput.trim()
+                    if (picked.isNotBlank()) {
+                        vm.onToggleAccord(picked)
+                    }
+                },
+            )
+            if (state.accordSuggestions.isNotEmpty()) {
+                AutocompleteSuggestionsDropdown(
+                    suggestions = state.accordSuggestions,
+                    onPick = vm::onToggleAccord,
+                )
+            }
+            val visibleAccords = (state.selectedAccords + state.availableAccords)
+                .distinctBy { it.lowercase() }
+                .take(maxOf(5, state.selectedAccords.size))
+
+            visibleAccords.forEach { accord ->
                 FilterCheckboxRow(
-                    label = accord,
+                    label = formatDisplayName(accord),
                     checked = state.selectedAccords.any { it.equals(accord, ignoreCase = true) },
                     onClick = { vm.onToggleAccord(accord) },
                 )
@@ -743,13 +863,10 @@ private fun AffinerLaRechercheCard(
 
         // 6. Note minimale
         FilterGroup(title = "Note minimale") {
-            Text(
-                text = "★ 4 et plus",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = if (state.minRating4Plus) FontWeight.Bold else FontWeight.Normal,
-                ),
-                color = if (state.minRating4Plus) Primaire else Secondaire,
-                modifier = Modifier.clickable { vm.onToggleMinRating4Plus() },
+            FilterCheckboxRow(
+                label = "★ 4 et plus",
+                checked = state.minRating4Plus,
+                onClick = { vm.onToggleMinRating4Plus() },
             )
         }
 
@@ -818,8 +935,9 @@ private fun FilterCheckboxRow(
             text = label,
             style = MaterialTheme.typography.bodySmall.copy(
                 fontSize = 13.sp,
+                fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal,
             ),
-            color = Secondaire,
+            color = if (checked) Profond else Secondaire,
         )
     }
 }
@@ -879,7 +997,7 @@ private fun AutocompleteSuggestionsDropdown(
         Column {
             suggestions.forEach { item ->
                 Text(
-                    text = item,
+                    text = formatDisplayName(item),
                     style = MaterialTheme.typography.bodySmall,
                     color = Profond,
                     modifier = Modifier
@@ -896,6 +1014,9 @@ private fun AutocompleteSuggestionsDropdown(
 private fun PerfumeResultsGrid(
     perfumes: List<SearchPerfumeRpcDto>,
     isLoading: Boolean,
+    error: String?,
+    onRetry: () -> Unit,
+    onResetFilters: () -> Unit,
     columns: Int,
     horizontalSpacing: Dp,
     verticalSpacing: Dp,
@@ -913,20 +1034,53 @@ private fun PerfumeResultsGrid(
         return
     }
 
-    if (perfumes.isEmpty()) {
-        Box(
+    if (error != null) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(Blanc)
                 .padding(32.dp),
-            contentAlignment = Alignment.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = Primaire, contentColor = Blanc),
+            ) {
+                Text("Réessayer")
+            }
+        }
+        return
+    }
+
+    if (perfumes.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Blanc)
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
                 text = "Aucun parfum ne correspond à votre recherche.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = Secondaire,
             )
+            Button(
+                onClick = onResetFilters,
+                colors = ButtonDefaults.buttonColors(containerColor = Primaire, contentColor = Blanc),
+                shape = RoundedCornerShape(50),
+            ) {
+                Text("Réinitialiser les filtres")
+            }
         }
         return
     }
@@ -963,13 +1117,39 @@ private fun CataloguePaginationBar(
     onSelectPage: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visiblePages = (1..minOf(maxOf(totalPages, 3), 5)).toList()
+    val windowSize = 5
+    val halfWindow = windowSize / 2
+    val startPage = (currentPage - halfWindow).coerceAtLeast(1)
+    val endPage = (startPage + windowSize - 1).coerceAtMost(totalPages.coerceAtLeast(1))
+    val adjustedStart = (endPage - windowSize + 1).coerceAtLeast(1)
+    val visiblePages = (adjustedStart..endPage).toList()
 
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (currentPage > 1) {
+            Box(
+                modifier = Modifier
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Blanc)
+                    .border(1.dp, Sable, RoundedCornerShape(50))
+                    .clickable { onSelectPage(currentPage - 1) }
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "←",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = Profond,
+                )
+            }
+        }
+
         visiblePages.forEach { page ->
             val isSelected = page == currentPage
             Box(
@@ -994,26 +1174,25 @@ private fun CataloguePaginationBar(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .height(40.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Blanc)
-                .border(1.dp, Sable, RoundedCornerShape(50))
-                .clickable {
-                    val nextPage = if (currentPage < visiblePages.last()) currentPage + 1 else 1
-                    onSelectPage(nextPage)
-                }
-                .padding(horizontal = 20.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "Suivant →",
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = Profond,
-            )
+        if (currentPage < totalPages) {
+            Box(
+                modifier = Modifier
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Blanc)
+                    .border(1.dp, Sable, RoundedCornerShape(50))
+                    .clickable { onSelectPage(currentPage + 1) }
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Suivant →",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = Profond,
+                )
+            }
         }
     }
 }
