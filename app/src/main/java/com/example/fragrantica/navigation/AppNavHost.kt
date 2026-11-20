@@ -23,7 +23,7 @@ fun AppNavHost(
         composable(Routes.PARFUMS) { ParfumsScreen() }
         composable(Routes.MARQUES) { MarquesScreen() }
         composable(Routes.ACTUALITES) { ActualitesScreen() }
-        composable(Routes.DETAIL) { AProposScreen() }
-        composable(Routes.A_PROPOS) { AProposScreen() }
+        composable(Routes.DETAIL) { AProposScreen(navController) }
+        composable(Routes.A_PROPOS) { AProposScreen(navController) }
     }
 }
