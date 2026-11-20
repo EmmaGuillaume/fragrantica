@@ -48,6 +48,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.fragrantica.R
 import com.example.fragrantica.data.PerfumeSummaryDto
+import com.example.fragrantica.model.AccueilState
+import com.example.fragrantica.model.AccueilViewModel
 import com.example.fragrantica.navigation.Routes
 import com.example.fragrantica.ui.components.PerfumeCard
 import com.example.fragrantica.ui.components.PerfumeCardVariant
