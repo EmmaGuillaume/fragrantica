@@ -25,7 +25,8 @@ import com.example.fragrantica.navigation.menuItems
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Header(navController: NavHostController) {
+fun Header(navController: NavHostController, onSignOut: (() -> Unit)? = null
+) {
     var menuOuvert by remember { mutableStateOf(false) }
 
     TopAppBar(
@@ -61,6 +62,15 @@ fun Header(navController: NavHostController) {
                             onClick = {
                                 menuOuvert = false
                                 navController.navigate(route) { launchSingleTop = true }
+                            }
+                        )
+                    }
+                    if (onSignOut != null) {
+                        DropdownMenuItem(
+                            text = { Text("Déconnexion") },
+                            onClick = {
+                                menuOuvert = false
+                                onSignOut()
                             }
                         )
                     }

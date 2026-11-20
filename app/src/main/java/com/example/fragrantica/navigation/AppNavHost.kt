@@ -8,7 +8,11 @@ import androidx.navigation.compose.composable
 import com.example.fragrantica.ui.screens.*
 
 @Composable
-fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
+fun AppNavHost(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    onSignOut: () -> Unit = {}
+) {
     NavHost(
         navController = navController,
         startDestination = Routes.ACCUEIL,
@@ -19,8 +23,7 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
         composable(Routes.PARFUMS) { ParfumsScreen() }
         composable(Routes.MARQUES) { MarquesScreen() }
         composable(Routes.ACTUALITES) { ActualitesScreen() }
-        composable(Routes.CONNEXION) { AProposScreen() }
-        composable(Routes.CREER_COMPTE) { AProposScreen() }
         composable(Routes.DETAIL) { AProposScreen() }
+        composable(Routes.A_PROPOS) { AProposScreen() }
     }
 }
